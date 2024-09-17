@@ -163,4 +163,4 @@ def fetch_and_update_grants_with_scores(rows=10):
         print(f"An error occurred: {e}")
 
 # Run the combined function, specify the number of grants you want to fetch (e.g., 10, 20, 50)
-fetch_and_update_grants_with_scores(rows=150)
+# fetch_and_update_grants_with_scores(rows=150)
