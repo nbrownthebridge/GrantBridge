@@ -40,7 +40,7 @@ def calculate_score(user_profile, grant):
     geographic_area_state = user_profile.get('Geographic Area State', '').lower()
 
     # Fields to check for matching
-    fields_to_check = ['title', 'description', 'type', 'geographic_area', 'agency', 'agencyCode', 'cfdaList']
+    fields_to_check = ['title', 'description', 'type', 'geographic_area', 'agency']
     
     # Check each field for rough matches
     for field in fields_to_check:
@@ -67,6 +67,8 @@ def filter_grant_fields(grant):
     """Filter the grant data to only the fields of interest."""
     return {
         'ID': grant.get('id'),
+        'Title': grant.get('title'),
+        'Description': grant.get('synopsis', {}).get('synopsisDesc'),
         'Agency': grant.get('agency'),
         'Agency Code': grant.get('agencyCode'),
         'Agency Detail': grant.get('agencyDetail'),
@@ -83,7 +85,7 @@ def filter_grant_fields(grant):
         }
     }
 
-def fetch_and_update_grants_with_scores(rows=10):
+def fetch_and_update_grants_with_scores(profile, rows=10):
     """Fetch multiple grants and update detailed information for each with embedded scores."""
     print(f"Starting fetch_and_update_grants_with_scores for {rows} grants...")
 
@@ -113,10 +115,7 @@ def fetch_and_update_grants_with_scores(rows=10):
         
         grants_data = response.json().get('oppHits', [])
         print(f"Fetched {len(grants_data)} grants.")
-
-        # Fetch all profiles for scoring
-        profiles = list(profiles_collection.find())
-
+        filtered_grants = []
         # Updating database with grant details and embedded scores
         for grant in grants_data:
             opp_id = grant.get('id')
@@ -139,23 +138,25 @@ def fetch_and_update_grants_with_scores(rows=10):
 
             # Embed scores for each profile into the grant document
             filtered_grant['scores'] = []
-            for profile in profiles:
-                score = calculate_score(profile, filtered_grant)
-                profile_score_data = {
-                    'profile_id': profile['_id'],
-                    'organization': profile.get('Organization', 'Unknown Organization'),
-                    'score': score
-                }
-                filtered_grant['scores'].append(profile_score_data)
+            score = calculate_score(profile, filtered_grant)
+            # if score == 0:
+            #     continue
+            profile_score_data = {
+                'profile_id': profile['_id'],
+                'organization': profile.get('Organization', 'Unknown Organization'),
+                'score': score
+            }
+            filtered_grant['scores'].append(profile_score_data)
+            filtered_grants.append(filtered_grant)
+        result = []
+        for record in filtered_grants:
+            record['_id'] = str(record['_id'])  # Convert ObjectId to string for JSON serialization
+            record['scores'][0]['profile_id'] = str(record['scores'][0]['profile_id'])
+            result.append(record)
+        # print(filtered_grants)
+        return filtered_grants
 
-            # Insert or update the filtered grant information in MongoDB with scores
-            grants_collection.update_one(
-                {"id": opp_id},  # Use the "id" field to avoid issues with "_id"
-                {"$set": filtered_grant},
-                upsert=True
-            )
-
-        print(f"Database updated successfully with {len(grants_data)} grants and embedded scores.")
+        #print(f"Database updated successfully with {len(grants_data)} grants and embedded scores.")
     
     except requests.RequestException as e:
         print(f"Failed to fetch data from grants.gov: {e}")

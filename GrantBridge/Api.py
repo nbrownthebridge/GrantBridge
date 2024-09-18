@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timezone
 from flask import Flask, jsonify, request
 from scrape import ScoreAndScrape as ss
 from pymongo import MongoClient
@@ -13,13 +13,18 @@ def save_profile():
     print(request.json)
     request_data = request.json
     profile_record = {
-        'organizationName': request_data.get('organizationName', 'NotProvided'),
-        'organizationDesc': request_data.get('organizationDesc', 'NotProvided'),
+        'fname': request_data.get('fname', 'NotProvided'),
+        'lname': request_data.get('lname', 'NotProvided'),
+        'organizationName': request_data.get('orgname', 'NotProvided'),
+        'organizationDesc': request_data.get('orgdesc', 'NotProvided'),
         'email': request_data.get('email', 'NotProvided'),
-        'grantType': request_data.get('grantType', 'NotProvided'),
-        'state': request_data.get('state', 'NotProvided'),
+        'address1': request_data.get('streetaddress', 'NotProvided'),
+        'address2': request_data.get('address2', 'NotProvided'),
         'city': request_data.get('city', 'NotProvided'),
-        'creationDate': datetime.utcnow().isoformat(),
+        'state': request_data.get('state', 'NotProvided'),
+        'zip': request_data.get('zip', 'NotProvided'),
+        'country': request_data.get('country', 'NotProvided'),
+        'creationDate': datetime.now(timezone.utc)
     }
     client = MongoClient(connection_string)
     db = client['hackathon_db']
@@ -28,16 +33,18 @@ def save_profile():
 
 @app.route('/scrapeAndScore', methods=['GET'])
 def scrape_and_score():
-    print(request.json)
     organizationId = request.args.get('orgId')
     query = {}
     if organizationId:
-        query['organizationId'] = organizationId
+        query['OrganizationId'] = organizationId
+    print(query)
     client = MongoClient(connection_string)
     db = client['hackathon_db']
-    existing_records = db['grants'].find(query)
-    if existing_records is not None:
-        return existing_records
+    profile = db['profiles'].find_one(query)
+    result = []
+    if profile is not None:
+        grants = ss.fetch_and_update_grants_with_scores(profile, rows=100)
+        return jsonify(grants)
     else:
-        ss.fetch_and_update_grants_with_scores(rows=500)
+        return jsonify({'Result': 'No organization with that ID exists.'})
     return
