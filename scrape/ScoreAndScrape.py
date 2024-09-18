@@ -150,7 +150,7 @@ def fetch_and_update_grants_with_scores(profile, rows=10):
             filtered_grants.append(filtered_grant)
         result = []
         for record in filtered_grants:
-            record['_id'] = str(record['_id'])  # Convert ObjectId to string for JSON serialization
+            #record['_id'] = str(record['_id'])  # Convert ObjectId to string for JSON serialization
             record['scores'][0]['profile_id'] = str(record['scores'][0]['profile_id'])
             result.append(record)
         # print(filtered_grants)
