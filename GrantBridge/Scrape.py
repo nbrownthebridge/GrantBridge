@@ -30,7 +30,7 @@ def fetch_and_update_grants():
     data = {
         "fundingInstruments": "G",
         "sortBy": "openDate|desc",
-        "rows": 100,  # Fetch a number of records
+        "rows": 1,  # Fetch a number of records
         "oppStatuses": "forecasted|posted"
     }
 
@@ -66,7 +66,7 @@ def fetch_and_update_grants():
                     combined_data.update(grant_details)  # Merge detailed data into the initial data
                 
                 # Insert or update the combined grant information in MongoDB
-                collection.update_one(
+                collection.update(
                     {"id": opp_id},
                     {"$set": combined_data},
                     upsert=True
@@ -80,3 +80,4 @@ def fetch_and_update_grants():
 
 # Run the function
 fetch_and_update_grants()
+
